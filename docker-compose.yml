@@ -17,3 +17,12 @@ services:
       # - WEB_AUTHENTICATION=1           # Adds a login page (requires SECURE_CONNECTION=1)
       # - WEB_AUTHENTICATION_USERNAME=changeme
       # - WEB_AUTHENTICATION_PASSWORD=changeme
+
+      # ---- Mobile-friendly web UI (see README) ----
+      # The remote desktop is rendered at this resolution and then
+      # scaled down to fit the browser window. Going larger here means
+      # more visible detail (Sweet Home 3D is resolution-sensitive),
+      # at the cost of more CPU/bandwidth. 1920x1080 is a good default.
+      # For a phone on a slow link, try 1600x900 or 1366x768.
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
