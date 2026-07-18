@@ -1,6 +1,19 @@
-version: "3.8"
 services:
   sweethome3d:
     build: .
+    container_name: sweethome3d
+    restart: unless-stopped
     ports:
-      - 5800:5800
+      - "5800:5800"   # Web UI - http://<host-ip>:5800
+      # - "5900:5900" # Optional: uncomment for VNC client access instead of the browser
+    volumes:
+      - ./config:/config   # IMPORTANT: persists your saved plans. Without this, everything is lost when the container is recreated.
+    environment:
+      - USER_ID=1000          # Match the host user who should own ./config (run `id` on the host to check)
+      - GROUP_ID=1000         # Match that user's group ID
+      - TZ=Etc/UTC            # e.g. Europe/Paris - keeps log timestamps correct
+      - KEEP_APP_RUNNING=1    # Auto-restart Sweet Home 3D if it crashes
+      # - SECURE_CONNECTION=1            # Recommended if you expose this beyond your LAN (serves over HTTPS)
+      # - WEB_AUTHENTICATION=1           # Adds a login page (requires SECURE_CONNECTION=1)
+      # - WEB_AUTHENTICATION_USERNAME=changeme
+      # - WEB_AUTHENTICATION_PASSWORD=changeme
