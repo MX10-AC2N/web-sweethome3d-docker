@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!--
+        Responsive viewport. The baseimage ships a fixed-width viewport
+        designed for desktop browsers; on phones this would just render
+        the VNC canvas at its native desktop size and force the user to
+        pinch-zoom. We use the standard "follow device width" tag instead.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <!-- iOS / PWA niceties so the page feels like a real app when saved to home screen. -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sweet Home 3D">
+    <meta name="theme-color" content="#1f6feb">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <title>Sweet Home 3D</title>
+    <link rel="icon" type="image/png" href="app/images/icons/novnc-192.png">
+    <link rel="apple-touch-icon" href="app/images/icons/novnc-192.png">
+
+    <link rel="stylesheet" href="app/styles/base.css">
+    <style>
+        /*
+         * The original baseimage landing page is a fixed 720px-wide
+         * container with sidebars on both sides. That's where the
+         * "not responsive at all" feel comes from. We replace it with
+         * a fluid layout that adapts to any screen.
+         */
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --accent: #1f6feb;
+            --accent-hover: #388bfd;
+            --ok: #3fb950;
+            --warn: #d29922;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                         Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial,
+                         sans-serif;
+            -webkit-text-size-adjust: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            min-height: 100dvh; /* dynamic viewport for mobile browsers */
+        }
+
+        header {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        header img {
+            width: 36px; height: 36px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            line-height: 1.2;
+        }
+        header .subtitle {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px 16px;
+            gap: 16px;
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            width: 100%;
+        }
+
+        .card h2 {
+            margin: 0 0 8px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .card p {
+            margin: 0 0 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--muted);
+        }
+        .card p:last-child { margin-bottom: 0; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            /* Larger tap target for touch devices */
+            min-height: 44px;
+            transition: background 0.15s;
+        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:active { transform: scale(0.98); }
+        .btn .icon {
+            width: 18px; height: 18px;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--border); }
+
+        .features {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+        .feature::before {
+            content: "✓";
+            color: var(--ok);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .tips {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        .tips strong { color: var(--text); font-weight: 600; }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: rgba(63, 185, 80, 0.1);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .status .dot {
+            width: 8px; height: 8px;
+            background: var(--ok);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--ok);
+        }
+
+        footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 11px;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+        }
+        footer a { color: var(--muted); }
+
+        /*
+         * On wider screens, give the launcher a bit more breathing room.
+         */
+        @media (min-width: 600px) {
+            header { padding: 16px 24px; }
+            header h1 { font-size: 20px; }
+            main { padding: 32px 24px; }
+            .card { padding: 22px; }
+            .btn { width: auto; min-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="app/images/icons/novnc-192.png" alt="" onerror="this.style.display='none'">
+        <div>
+            <h1>Sweet Home 3D<span class="subtitle">Web interface</span></h1>
+        </div>
+    </header>
+
+    <main>
+        <div class="card">
+            <div class="status">
+                <span class="dot"></span>
+                <span>Container is running and ready.</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Launch the app</h2>
+            <p>
+                Opens Sweet Home 3D in your browser. The interface is
+                auto-scaled to fit your screen, with touch-friendly
+                controls on phones and tablets.
+            </p>
+            <a id="launch" class="btn" href="vnc.html?resize=scale&autoconnect=true&path=websockify&show_dot=true&reconnect=true">
+                <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Open Sweet Home 3D
+            </a>
+        </div>
+
+        <div class="card">
+            <h2>Tips for the best experience</h2>
+            <div class="features">
+                <div class="feature"><span>On desktop: works like any VNC web client. Mouse + keyboard are fully supported.</span></div>
+                <div class="feature"><span>On phone/tablet: the remote desktop auto-resizes to fill your screen. Pinch-zoom is disabled to keep the VNC view 1:1 with your taps.</span></div>
+                <div class="feature"><span>To scroll a long menu: tap the screen, then drag with one finger.</span></div>
+                <div class="feature"><span>Right-click on touch devices: long-press (about half a second) on the canvas.</span></div>
+                <div class="feature"><span>For very small phones (under 5"): consider rotating to landscape mode.</span></div>
+            </div>
+        </div>
+
+        <div class="card tips">
+            <p>
+                <strong>How it works:</strong> the full Sweet Home 3D
+                desktop app runs inside this container. What you see in the
+                browser is a live, hardware-accelerated stream of that
+                desktop, rendered at the resolution of your device.
+            </p>
+        </div>
+    </main>
+
+    <footer>
+        Sweet Home 3D is GPL software by eTeks &middot;
+        Web layer: noVNC
+    </footer>
+
+    <script>
+        /*
+         * Detect screen size and pass it to vnc.html so noVNC can pick
+         * the right initial scale on the very first paint, instead of
+         * rendering the default 1920x1080 desktop and then resizing.
+         */
+        (function () {
+            var link = document.getElementById('launch');
+            var url = new URL(link.href, window.location.href);
+            // Hint the initial desktop size based on the device pixel ratio,
+            // capped so a 4K phone doesn't try to render an 8K desktop.
+            var cap = 1920;
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            var w = Math.min(window.screen.width * dpr, cap);
+            var h = Math.min(window.screen.height * dpr, cap);
+            url.searchParams.set('width', w);
+            url.searchParams.set('height', h);
+            link.href = url.toString();
+        })();
+    </script>
+</body>
+</html>

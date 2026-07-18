@@ -1,0 +1,45 @@
+# /etc/nginx/sites-available/webui.override
+#
+# The baseimage ships a site file at /etc/nginx/sites-available/webui
+# that is generated at container startup. We can't replace that file
+# directly (it gets regenerated), but we CAN include this override
+# file by appending `include /etc/nginx/sites-available/webui.override;`
+# to the generated config via a small startup hook.
+#
+# What this does:
+#   1. Serve our responsive launcher at "/" (overrides the default
+#      baseimage page that was a fixed-width sidebar-laden page).
+#   2. Inject our responsive.css into vnc.html via sub_filter.
+#   3. Make sure the page is never cached so a future update is
+#      picked up immediately.
+
+# --- Launcher / ---
+location = / {
+    root /opt/novnc;
+    try_files /index.html =404;
+}
+
+# Also expose the launcher at /index.html (some clients strip the path).
+location = /index.html {
+    root /opt/novnc;
+    try_files /index.html =404;
+}
+
+# --- vnc.html with sub_filter injection ---
+location = /vnc.html {
+    root /opt/novnc;
+    # Replace the closing </head> with our CSS link + </head> so our
+    # responsive stylesheet loads alongside noVNC's own.
+    sub_filter '</head>' '<link rel="stylesheet" href="/app/styles/responsive.css"></head>';
+    sub_filter_once on;
+    sub_filter_types text/html;
+    add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+}
+
+# --- Make sure noVNC's assets are never cached (handy during dev) ---
+location /app/ {
+    root /opt/novnc;
+    add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+}

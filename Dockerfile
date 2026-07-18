@@ -25,6 +25,32 @@ RUN chmod +x /startapp.sh
 # installed xterm and never updated the app name afterwards.)
 RUN set-cont-env APP_NAME "Sweet Home 3D"
 
+# ---------------------------------------------------------------------------
+# Mobile-friendly web UI
+# ---------------------------------------------------------------------------
+# The baseimage's noVNC page is a fixed-size desktop stream - usable on a
+# PC but awful on a phone (tiny shrunken desktop, no auto-fit, the
+# settings panel fights with the canvas). We patch it in three ways:
+#
+#   1. Swap the default ui.js scaling mode from "off" to "scale" so the
+#      remote desktop auto-resizes to the browser viewport.
+#   2. Replace the launcher index page with a responsive one that
+#      detects the device and sets sensible initial sizing.
+#   3. Inject a custom CSS file into vnc.html for touch + mobile tweaks,
+#      and override nginx to serve the new pages and disable caching.
+#
+# The nginx override is wired in via a /etc/cont-init.d hook so it
+# survives the baseimage regenerating its config at every startup.
+# ---------------------------------------------------------------------------
+
+# Copy all custom files in one shot to keep the image layers tidy.
+COPY rootfs/ /
+
+# Make the patch script executable and run it at build time.
+RUN chmod +x /opt/novnc/patches/01-mobile-defaults.sh && \
+    /opt/novnc/patches/01-mobile-defaults.sh && \
+    chmod +x /etc/cont-init.d/99-nginx-override.sh
+
 # The web UI (served by nginx) should respond once the container is ready.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD curl -fs http://127.0.0.1:5800/ -o /dev/null || exit 1
