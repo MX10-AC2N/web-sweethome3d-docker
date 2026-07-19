@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sweet Home 3D">
+    <meta name="theme-color" content="#1f6feb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Sweet Home 3D — Web Editor</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231f6feb' d='M12 3 2 12h3v8h6v-6h2v6h6v-8h3z'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --panel-hover: #1c2128;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --accent: #1f6feb;
+            --accent-hover: #388bfd;
+            --ok: #3fb950;
+            --warn: #d29922;
+            --danger: #f85149;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                         Roboto, Oxygen, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        header .logo {
+            width: 36px; height: 36px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        header .logo svg { width: 22px; height: 22px; fill: white; }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            line-height: 1.2;
+        }
+        header .subtitle {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+        }
+        .card h2 {
+            margin: 0 0 6px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .card .desc {
+            margin: 0 0 14px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--muted);
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            min-height: 44px;          /* iOS / Android tap target */
+            transition: background 0.15s, transform 0.1s;
+        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:active { transform: scale(0.98); }
+        .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-danger { background: var(--danger); }
+
+        /* ----- Plan list ----- */
+        .plan-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .plan-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: background 0.1s;
+        }
+        .plan-list li:hover { background: var(--panel-hover); }
+        .plan-list a {
+            color: var(--text);
+            text-decoration: none;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+        .plan-list .meta {
+            color: var(--muted);
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+        .plan-list .delete {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+        }
+        .plan-list .delete:hover { color: var(--danger); background: rgba(248, 81, 73, 0.1); }
+
+        .empty {
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        /* ----- Tips ----- */
+        .tips {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+        .tips strong { color: var(--text); font-weight: 600; }
+        .tips ul {
+            margin: 8px 0 0;
+            padding-left: 20px;
+        }
+        .tips li { margin-bottom: 4px; }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: rgba(63, 185, 80, 0.1);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .status .dot {
+            width: 8px; height: 8px;
+            background: var(--ok);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--ok);
+        }
+
+        footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 11px;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+        }
+        footer a { color: var(--muted); }
+
+        @media (min-width: 600px) {
+            header { padding: 16px 24px; }
+            header h1 { font-size: 20px; }
+            main { padding: 32px 24px; }
+            .card { padding: 22px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <svg viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3z"/></svg>
+        </div>
+        <div>
+            <h1>Sweet Home 3D<span class="subtitle">Web editor</span></h1>
+        </div>
+    </header>
+
+    <main>
+        <div class="card">
+            <div class="status">
+                <span class="dot"></span>
+                <span>Editor is ready. Tap below to start.</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Start a new plan</h2>
+            <p class="desc">Opens the editor with an empty floor plan. Draw walls, drop furniture, switch to 3D view — all from your browser.</p>
+            <div class="actions">
+                <a class="btn" href="/editor/">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/></svg>
+                    New empty plan
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Your saved plans</h2>
+            <p class="desc">Plans you create here are saved on the server. They stay available across devices.</p>
+            <ul id="plan-list" class="plan-list">
+                <li class="empty">Loading…</li>
+            </ul>
+        </div>
+
+        <div class="card tips">
+            <strong>On phone / tablet:</strong>
+            <ul>
+                <li>Two fingers to pan and zoom the 2D plan and the 3D view.</li>
+                <li>One finger drag to draw walls and select items.</li>
+                <li>The furniture catalog can be collapsed with the <strong>«</strong> button to give you more room.</li>
+                <li>For complex edits (long furniture lists, photo rendering), use the desktop app.</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Other interfaces</h2>
+            <p class="desc">This container only hosts the web editor. For the full desktop app with all plugins, use the VNC interface.</p>
+            <div class="actions">
+                <a class="btn btn-secondary" href="http://192.168.1.192:5800/" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H3V6h18v14zM5 8h14v2H5zm0 4h14v2H5zm0 4h10v2H5z"/></svg>
+                    Open desktop app (VNC)
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        Sweet Home 3D JS is GPL software by Space Mushrooms / eTeks
+    </footer>
+
+    <script>
+        (function () {
+            var list = document.getElementById('plan-list');
+
+            function loadPlans() {
+                fetch('/listHomes.php', { cache: 'no-store' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (homes) {
+                        renderPlans(homes || []);
+                    })
+                    .catch(function (err) {
+                        list.innerHTML = '<li class="empty">Could not load plans (' + err + ').</li>';
+                    });
+            }
+
+            function renderPlans(homes) {
+                if (!homes.length) {
+                    list.innerHTML = '<li class="empty">No saved plans yet. Tap "New empty plan" to start.</li>';
+                    return;
+                }
+                list.innerHTML = '';
+                homes.forEach(function (name) {
+                    var li = document.createElement('li');
+
+                    var a = document.createElement('a');
+                    a.href = '/editor/?home=' + encodeURIComponent(name);
+                    a.textContent = name;
+
+                    var meta = document.createElement('span');
+                    meta.className = 'meta';
+                    meta.textContent = '.sh3x';
+
+                    var del = document.createElement('button');
+                    del.className = 'delete';
+                    del.title = 'Delete';
+                    del.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+                    del.onclick = function (e) {
+                        e.preventDefault();
+                        if (!confirm('Delete plan "' + name + '"?')) return;
+                        fetch('/deleteHome.php?home=' + encodeURIComponent(name))
+                            .then(function () { loadPlans(); });
+                    };
+
+                    li.appendChild(a);
+                    li.appendChild(meta);
+                    li.appendChild(del);
+                    list.appendChild(li);
+                });
+            }
+
+            loadPlans();
+        })();
+    </script>
+</body>
+</html>

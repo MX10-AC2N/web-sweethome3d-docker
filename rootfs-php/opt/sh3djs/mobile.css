@@ -1,0 +1,101 @@
+/*
+ * mobile.css - responsive tweaks for the upstream SweetHome3DJS editor.
+ *
+ * The upstream index.html ships with a viewport meta already set
+ * (width=device-width, user-scalable=no) and a touch-action: none on
+ * body, so the basics are there. But on phones the catalog pane
+ * dominates the screen, the toolbar wraps badly, and several
+ * dialogs exceed the viewport.
+ *
+ * This file is injected via nginx sub_filter. It only adds rules;
+ * the upstream CSS continues to handle the desktop case.
+ */
+
+/* ---------------------------------------------------------------------
+ * Default font scale - upstream is tiny on phones
+ * ------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    body {
+        font-size: 15px;
+    }
+    #home-pane-toolbar .toolbar-button {
+        font-size: 14px;
+    }
+}
+
+/* ---------------------------------------------------------------------
+ * On phones, the catalog pane should be a side drawer, not a permanent
+ * left column. The upstream already has a "catalog furniture splitter"
+ * handle - we make it more visible and ensure the catalog can be
+ * collapsed to 0 width.
+ * ------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    /* Make the splitter handle a clear tap target */
+    #catalog-furniture-splitter,
+    #furniture-plan-splitter,
+    #plan-3D-view-splitter {
+        background: rgba(31, 111, 235, 0.4) !important;
+        z-index: 10;
+    }
+    /* Tooltip text is invisible on touch, hide it */
+    [data-name$="-tooltip"],
+    .tooltip {
+        display: none !important;
+    }
+}
+
+/* ---------------------------------------------------------------------
+ * Catalog: full-width on small screens, with horizontal scroll for
+ * the furniture list (avoids the cramped vertical scroll).
+ * ------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    #furniture-catalog-list {
+        font-size: 14px;
+    }
+    #furniture-catalog .furniture-category {
+        font-size: 13px;
+    }
+}
+
+/* ---------------------------------------------------------------------
+ * 3D view: ensure the canvas fills its container
+ * ------------------------------------------------------------------- */
+#home-3D-view canvas,
+#home-plan canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* ---------------------------------------------------------------------
+ * Dialogs: scroll if too tall
+ * ------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    .dialog,
+    .home-furniture-panel,
+    .preferences-panel,
+    .new-home-panel {
+        max-height: 90vh !important;
+        max-width: 95vw !important;
+        overflow-y: auto !important;
+    }
+    .label-input-grid > * {
+        font-size: 14px;
+    }
+}
+
+/* ---------------------------------------------------------------------
+ * The body has touch-action: none from upstream, which is what we
+ * want on the canvas. But for dialog content / catalog we want
+ * normal scrolling. Restore it for those subtrees.
+ * ------------------------------------------------------------------- */
+.dialog, .panel, .card, .preferences-panel,
+#catalog-furniture-pane, #furniture-catalog-list {
+    touch-action: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ---------------------------------------------------------------------
+ * Color & nicer default colors for selection / hover
+ * ------------------------------------------------------------------- */
+#home-plan::selection { background: #1f6feb; }
