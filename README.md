@@ -4,9 +4,22 @@ Run [Sweet Home 3D](https://www.sweethome3d.com/) — the free, open-source
 floor-plan and interior-design app — as a containerized web app, accessible
 from any browser on your network.
 
-It's built on top of [jlesage/docker-baseimage-gui](https://github.com/jlesage/docker-baseimage-gui),
-which packages the desktop GUI and serves it over HTTP (via noVNC) and,
-optionally, plain VNC.
+This project ships **two complementary services** behind a single
+`docker compose up`:
+
+| Service | Port | What it is | Best for |
+|---|---|---|---|
+| `sweethome3d` (VNC) | `5800` | The full Java desktop app streamed over VNC | Complex edits, photo rendering, all plugins |
+| `sweethome3d-web` (JS) | `5801` | The HTML5/JavaScript/WebGL port, served via PHP | **Phones, tablets, touch devices** |
+
+Both share the same home directory structure (`.sh3d` / `.sh3x` are
+the same XML format) so you can design on PC, walk away with your
+phone, and keep working.
+
+It's built on top of [jlesage/docker-baseimage-gui](https://github.com/jlesage/docker-baseimage-gui)
+for the VNC service, and uses the official
+[SweetHome3DJS](https://sourceforge.net/projects/sweethome3d/files/SweetHome3DJS/)
+PHP server for the web editor.
 
 ## Quick start
 
@@ -16,67 +29,100 @@ cd web-sweethome3d-docker
 docker compose up -d --build
 ```
 
-Then open `http://<your-server-ip>:5800` in a browser.
+Then open:
 
-## Mobile / tablet usage
+- `http://<your-server-ip>:5800` — desktop app (VNC)
+- `http://<your-server-ip>:5801` — web editor (HTML5, touch-friendly)
 
-The web UI is patched to be responsive on phones and tablets:
+## The two services
 
-- The landing page is a small launcher that adapts to any screen
-  width (works on a 5" phone as well as on a 4K monitor).
-- The remote desktop is rendered at `DISPLAY_WIDTH x DISPLAY_HEIGHT`
-  (1920×1080 by default) and **auto-scaled** to fit the browser
-  viewport, so you no longer have to pinch-zoom and pan around a
-  tiny shrunken desktop.
-- Touch gestures are tuned for the VNC canvas: pinch-zoom is
-  disabled on the canvas (it was fighting with drag/scroll), and
-  long-press sends a right-click.
-- A reconnect-on-disconnect default means a brief network blip on
-  a phone won't kick you out.
+### `sweethome3d` (port 5800) — the VNC desktop app
 
-Open `http://<your-server-ip>:5800` on your phone, tap **Open
-Sweet Home 3D**, and the desktop fills your screen. For very small
-phones (under 5"), rotating to landscape is more comfortable.
+The full Java Sweet Home 3D app, served over noVNC. Works on any
+device with a browser and a mouse/keyboard, but it's a **desktop**
+experience so it's clunky on touch screens (tiny buttons, requires
+pinch-zoom on a phone).
 
-> **Note:** Sweet Home 3D itself is a Java desktop application. What
-> you see in the browser is a live, hardware-accelerated stream of
-> that desktop — not a native mobile UI. Touch targets and font
-> sizes are those of the desktop app, just rendered at a size that
-> fits your screen. For a truly native mobile UI you'd need
-> [Sweet Home 3D JS](https://github.com/cincheo/sh3do-getting-started),
-> which is a different (and much more limited) project.
+The baseimage's noVNC page was designed for desktop browsers, so we
+patch it at build time with three small changes (all under `rootfs/`):
 
-### Tuning the mobile experience
+1. **`rootfs/opt/novnc/patches/01-mobile-defaults.sh`** — `sed`
+   swap in `ui.js` to change the default `resize` setting from
+   `'off'` to `'scale'`. This is the single change that makes the
+   remote desktop auto-fit the browser.
+2. **`rootfs/opt/novnc/index.html`** — a self-contained responsive
+   launcher that replaces the baseimage's fixed-width landing page.
+3. **`rootfs/opt/novnc/app/styles/responsive.css` + nginx override**
+   — touch-action, viewport-fit, and full-screen settings panel for
+   the VNC page itself.
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `DISPLAY_WIDTH` / `DISPLAY_HEIGHT` | The internal desktop size the app renders at. Larger = more detail, more bandwidth. | `1920` / `1080` |
-| `KEEP_APP_RUNNING` | Auto-restart Sweet Home 3D if it crashes | `1` |
+On a phone, this gets you a usable-but-not-great view. For real
+mobile editing, use the second service.
 
-If the desktop feels blurry on your phone, raise `DISPLAY_WIDTH`/
-`DISPLAY_HEIGHT` (e.g. `2560x1440`). If the stream lags on a slow
-link, lower them (e.g. `1366x768`).
+### `sweethome3d-web` (port 5801) — the HTML5 web editor
 
-## Persisting your projects
+A pure HTML5 / WebGL port of Sweet Home 3D that runs entirely in
+the browser. **Truly responsive, genuinely touch-friendly**, no
+VNC stream. Works the same on a 5" phone as on a 4K monitor.
 
-Everything Sweet Home 3D saves (plans, preferences) lives under `/config`
-inside the container, which `docker-compose.yml` maps to a `./config` folder
-next to the compose file. **Without this volume, your floor plans are lost
-every time the container is recreated or updated.** Keep that mapping in
-place, and back up `./config` like you would any other important data.
+The web editor is built on top of the official
+[SweetHome3DJS PHP server](https://sourceforge.net/projects/sweethome3d/files/SweetHome3DJS/).
+The Docker image (`Dockerfile.php`) is a self-contained nginx +
+php-fpm stack, supervised by supervisord. At build time it:
+
+1. Downloads the official `SweetHome3DJS-X.Y.Z.zip` archive.
+2. Drops the JS engine, the furniture catalog, and the 3 PHP API
+   scripts into `/opt/sh3djs/`.
+3. Injects our `mobile.css` into the upstream `index.html` to make
+   the editor's UI fit small screens.
+4. Replaces the upstream's bare-bones landing page with a
+   responsive one (`/opt/sh3djs/landing.html`) that lists your
+   saved plans, has a "New empty plan" button, and links to the
+   VNC service.
+
+#### What works in the web editor
+
+✅ Full 2D plan editing (walls, rooms, dimensions, texts)
+✅ Furniture catalog (default ~600 items, multilingual)
+✅ 3D view (orbit, walk, top-down)
+✅ Save / open plans (stored as `.sh3x` files on the server)
+✅ Multi-language UI
+✅ Touch gestures (pinch-zoom, drag, long-press = right-click)
+
+#### What doesn't work in the web editor
+
+❌ Photo / video rendering (use the VNC service for that)
+❌ Third-party plugins (only the upstream defaults are available)
+❌ Importing some advanced `.sh3d` files (the JS port doesn't
+   support all features of the desktop format yet)
+
+#### Sharing plans between the two services
+
+Both services store plans as files. By default they use different
+folders on the host (`./config/` and `./plans/`) so they're
+isolated. To share, you have two options:
+
+- **Symlink** (simplest): `ln -s ./config ./plans` (or vice versa).
+  Both containers will then read/write the same files.
+- **Reconfigure** the volumes in `docker-compose.yml` to mount
+  the same path into both containers.
+
+The file formats are compatible — `.sh3x` (web) is the same XML
+zipped format as `.sh3d` (desktop). The desktop app opens `.sh3x`
+files just fine; the web editor opens `.sh3d` files just fine.
 
 ## Configuration
 
 Set these under `environment:` in `docker-compose.yml`:
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `USER_ID` / `GROUP_ID` | Match the host user who should own `./config` (run `id` on the host) | `1000` / `1000` |
-| `TZ` | Timezone, e.g. `Europe/Paris` | `Etc/UTC` |
-| `KEEP_APP_RUNNING` | Restart Sweet Home 3D automatically if it crashes | `1` |
-| `SECURE_CONNECTION` | Serve over HTTPS instead of plain HTTP | `0` |
-| `WEB_AUTHENTICATION` | Require a login page (needs `SECURE_CONNECTION=1`) | `0` |
-| `DISPLAY_WIDTH` / `DISPLAY_HEIGHT` | Internal desktop resolution; mobile UI auto-scales to fit | `1920` / `1080` |
+| Variable | Service | Purpose | Default |
+|---|---|---|---|
+| `USER_ID` / `GROUP_ID` | VNC | Match the host user who should own `./config` | `1000` / `1000` |
+| `TZ` | both | Timezone, e.g. `Europe/Paris` | `Etc/UTC` |
+| `KEEP_APP_RUNNING` | VNC | Restart Sweet Home 3D automatically if it crashes | `1` |
+| `SECURE_CONNECTION` | VNC | Serve over HTTPS instead of plain HTTP | `0` |
+| `WEB_AUTHENTICATION` | VNC | Require a login page (needs `SECURE_CONNECTION=1`) | `0` |
+| `DISPLAY_WIDTH` / `DISPLAY_HEIGHT` | VNC | Internal desktop resolution; mobile UI auto-scales to fit | `1920` / `1080` |
 
 The full list of variables is documented in the
 [baseimage-gui README](https://github.com/jlesage/docker-baseimage-gui#environment-variables).
@@ -87,34 +133,29 @@ turn on `SECURE_CONNECTION` and `WEB_AUTHENTICATION`.
 
 ## Ports
 
-| Port | Purpose |
-|---|---|
-| 5800 | Web UI — the only one enabled by default |
-| 5900 | VNC, for a VNC client instead of the browser — uncomment in `docker-compose.yml` to enable |
+| Port | Service | Purpose |
+|---|---|---|
+| 5800 | VNC | Web UI — the desktop app |
+| 5900 | VNC | Plain VNC, for a VNC client instead of the browser — uncomment in `docker-compose.yml` to enable |
+| 5801 | Web | Web editor — HTML5, touch-friendly |
 
-## How the mobile UI is built (for the curious)
+## Persisting your projects
 
-The baseimage's noVNC page was designed for desktop browsers and
-doesn't auto-fit a phone screen. We patch it at build time with
-three small changes, all under `rootfs/`:
+Each service stores plans in its own folder on the host:
 
-1. **`rootfs/opt/novnc/patches/01-mobile-defaults.sh`** — `sed`
-   swap in `ui.js` to change the default `resize` setting from
-   `'off'` to `'scale'`. This is the single change that makes the
-   remote desktop auto-fit the browser.
-2. **`rootfs/opt/novnc/index.html`** — a self-contained responsive
-   launcher that replaces the baseimage's fixed-width landing page.
-3. **`rootfs/opt/novnc/app/styles/responsive.css` + nginx override**
-   — touch-action, viewport-fit, and full-screen settings panel for
-   the VNC page itself. Wired in via a
-   `/etc/cont-init.d/99-nginx-override.sh` hook so the baseimage's
-   auto-generated nginx config picks up our `include`.
+| Folder | Service | Format |
+|---|---|---|
+| `./config/` | VNC | `.sh3d` files (and the app's preferences) |
+| `./plans/` | Web | `.sh3x` files (and `userPreferences.json`) |
 
-To customize further, edit those files and `docker compose up -d
---build`.
+Both folders are mounted as Docker volumes, so plans survive
+container rebuilds. **Without the volumes, plans are lost on every
+`docker compose up`.** Keep the mappings in place, and back the
+folders up like you would any other important data.
 
 ## License
 
-This project is licensed under the GPL-3.0 (see `LICENSE`). Sweet Home 3D
-itself is developed by [eTeks](https://www.sweethome3d.com/) and distributed
-under the GPL.
+This project is licensed under the GPL-3.0 (see `LICENSE`).
+Sweet Home 3D itself is developed by
+[eTeks / Space Mushrooms](https://www.sweethome3d.com/) and
+distributed under the GPL. SweetHome3DJS is also GPL.

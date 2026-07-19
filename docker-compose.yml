@@ -1,4 +1,11 @@
 services:
+  # ------------------------------------------------------------------
+  # Sweet Home 3D desktop app via VNC
+  # ------------------------------------------------------------------
+  # The full Java desktop app, served over VNC to a browser.
+  # Best for: complex editing, photo/video rendering, all plugins.
+  # Worst for: touch devices (the VNC stream is desktop-sized).
+  # ------------------------------------------------------------------
   sweethome3d:
     build: .
     container_name: sweethome3d
@@ -26,3 +33,31 @@ services:
       # For a phone on a slow link, try 1600x900 or 1366x768.
       - DISPLAY_WIDTH=1920
       - DISPLAY_HEIGHT=1080
+
+  # ------------------------------------------------------------------
+  # Sweet Home 3D JS web editor
+  # ------------------------------------------------------------------
+  # A pure HTML5 / WebGL port of Sweet Home 3D that runs entirely in
+  # the browser. Truly responsive, touch-friendly, no VNC.
+  # Best for: editing on phones/tablets, quick design sessions.
+  # Limits: no plugins, default furniture catalog only, no photo
+  # rendering.
+  #
+  # Plans are saved as .sh3x files in ./plans/ (the data dir). To
+  # share with the desktop app above, mount the SAME directory:
+  #   - either by changing the desktop app's KEEP_APP_RUNNING-volume
+  #     to ./plans
+  #   - or by symlinking ./config/.sweethome3d to ./plans
+  # ------------------------------------------------------------------
+  sweethome3d-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+    container_name: sweethome3d-web
+    restart: unless-stopped
+    ports:
+      - "5801:5801"   # Web editor - http://<host-ip>:5801
+    volumes:
+      - ./plans:/opt/sh3djs/data   # Persists your saved .sh3x files
+    environment:
+      - TZ=Etc/UTC
