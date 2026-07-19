@@ -1,0 +1,133 @@
+# nginx site config for Sweet Home 3D JS
+#
+# Serves:
+#   - The custom responsive landing page at /
+#   - The upstream index.html (the actual editor) at /editor/
+#   - Static assets at /lib/, /editor/lib/, etc.
+#   - PHP scripts via FastCGI to php-fpm
+
+server {
+    listen 5801 default_server;
+    listen [::]:5801 default_server;
+    server_name _;
+
+    # Document root
+    root /opt/sh3djs;
+    index index.html;
+
+    # Sensible defaults
+    client_max_body_size 50M;     # home files can grow
+    sendfile on;
+    tcp_nopush on;
+
+    # Logging - keep it terse
+    access_log /var/log/nginx/sh3djs-access.log;
+    error_log  /var/log/nginx/sh3djs-error.log;
+
+    # -----------------------------------------------------------------
+    # /  -> our custom responsive landing page
+    # -----------------------------------------------------------------
+    location = / {
+        try_files /landing.html =404;
+    }
+
+    location = /landing.html {
+        # No caching: page is small and we want edits visible immediately
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+    }
+
+    # -----------------------------------------------------------------
+    # /editor/  -> the upstream Sweet Home 3D JS editor
+    # We rewrite /editor/ requests to /opt/sh3djs/ but the URLs in
+    # the JS code stay clean. Actually simpler: serve directly.
+    # -----------------------------------------------------------------
+    location /editor/ {
+        alias /opt/sh3djs/;
+        index index.html;
+        # Make sure relative paths in index.html still work
+        sub_filter 'href="lib/' 'href="/editor/lib/';
+        sub_filter 'src="lib/'  'src="/editor/lib/';
+        sub_filter 'data/%s.sh3x' '/editor/data/%s.sh3x';
+        sub_filter 'writeData.php' '/editor/writeData.php';
+        sub_filter 'listHomes.php' '/editor/listHomes.php';
+        sub_filter 'deleteHome.php' '/editor/deleteHome.php';
+        sub_filter_types text/html;
+        sub_filter_once off;
+    }
+
+    # -----------------------------------------------------------------
+    # /editor/data/  -> user home files (persistent volume)
+    # -----------------------------------------------------------------
+    location /editor/data/ {
+        alias /opt/sh3djs/data/;
+        # Browsing the data folder directly is harmless, but block
+        # listing for paranoia (the editor doesn't need it).
+        autoindex off;
+    }
+
+    # -----------------------------------------------------------------
+    # /editor/*.php  -> reverse-proxy to php-fpm
+    # -----------------------------------------------------------------
+    location ~ ^/editor/.*\.php$ {
+        alias /opt/sh3djs/;
+        fastcgi_pass unix:/run/php/php-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $request_filename;
+        # The PHP scripts use $_GET['path'] and $_GET['home'] which
+        # get URL-encoded by the JS client. Already safe.
+    }
+
+    # -----------------------------------------------------------------
+    # /lib/  -> static JS engine + assets (served as a sibling)
+    # Mirror the /editor/lib/ path so the rewritten URLs in
+    # index.html resolve correctly.
+    # -----------------------------------------------------------------
+    location /lib/ {
+        alias /opt/sh3djs/lib/;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800" always;
+    }
+
+    # Same for /editor/lib/ if someone hits the raw path
+    location /editor/lib/ {
+        alias /opt/sh3djs/lib/;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800" always;
+    }
+
+    # -----------------------------------------------------------------
+    # Custom mobile CSS for the editor
+    # -----------------------------------------------------------------
+    location /editor/mobile.css {
+        alias /opt/sh3djs/mobile.css;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # -----------------------------------------------------------------
+    # /data/  -> expose data folder at top level too, for convenience
+    # -----------------------------------------------------------------
+    location /data/ {
+        alias /opt/sh3djs/data/;
+        autoindex off;
+    }
+
+    # -----------------------------------------------------------------
+    # /writeData.php, /listHomes.php, /deleteHome.php  -> at top level
+    # (Some embed configurations expect them here, in case anyone
+    # links directly to a saved file from outside the editor.)
+    # -----------------------------------------------------------------
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_pass unix:/run/php/php-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$uri;
+    }
+
+    # Block any other obvious badness
+    location ~ /\.(ht|git) { deny all; }
+    location ~ \..*/.*\.php$ { deny all; }
+}
